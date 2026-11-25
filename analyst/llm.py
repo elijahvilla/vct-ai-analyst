@@ -6,7 +6,8 @@ import os
 import tomllib
 from typing import Protocol
 
-DEFAULT_MODEL = "gemini-flash-latest"  # Google's alias for the current free-tier Flash model
+DEFAULT_MODEL = "gemini-3.5-flash-lite"  # free tier; checked 2026-11-25 (2.5-flash retired for new users)
+TIMEOUT_MS = 60_000  # a hung request becomes LLMUnavailable instead of freezing the app
 
 
 def read_secret(name: str, path: str = ".streamlit/secrets.toml") -> str | None:
@@ -36,7 +37,7 @@ class GeminiLLM:
         if not key or key == "paste-your-key-here":
             raise LLMUnavailable("GEMINI_API_KEY is not set")
         self.model = model or os.environ.get("GEMINI_MODEL", DEFAULT_MODEL)
-        self._client = genai.Client(api_key=key)
+        self._client = genai.Client(api_key=key, http_options={"timeout": TIMEOUT_MS})
 
     def complete(self, prompt: str) -> str:
         try:
