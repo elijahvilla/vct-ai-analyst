@@ -51,5 +51,5 @@ SELECT * FROM (VALUES
     ('astra', 'controller'), ('harbor', 'controller'), ('clove', 'controller'),
     ('killjoy', 'sentinel'), ('cypher', 'sentinel'), ('sage', 'sentinel'), ('chamber', 'sentinel'),
     ('deadlock', 'sentinel'), ('vyse', 'sentinel'), ('veto', 'sentinel'),
-    ('miks', NULL)  -- TODO(owner): Miks' role — confirm before the build is final
+    ('miks', 'controller')  -- roles for veto + miks confirmed by owner
 ) AS t(agent_name, role);
