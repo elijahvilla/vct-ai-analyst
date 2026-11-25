@@ -7,6 +7,7 @@ Writes eval/results/<on|off>.jsonl and rewrites eval/results/summary.md from whi
 import argparse
 import json
 import os
+import sys
 import time
 from collections import defaultdict
 from datetime import date
@@ -90,6 +91,7 @@ def write_summary() -> None:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8")  # the Windows console can't print ⚠ otherwise
     p = argparse.ArgumentParser()
     p.add_argument("--checks", choices=["on", "off"], default="on")
     p.add_argument("--limit", type=int)
