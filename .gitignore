@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.superpowers/
+data/raw/
+data/tableau/
+*.duckdb
+*.duckdb.wal
+.streamlit/secrets.toml
+.env
