@@ -58,4 +58,5 @@ def test_no_side_or_rollup_double_counting(con):
     # each player appears once per map (trap 1: Side rows; trap 2: 'All Maps' rollups)
     dupes = con.execute("SELECT match_map_id, player_id FROM fact_player_map GROUP BY 1, 2 HAVING count(*) > 1 LIMIT 5").fetchall()
     assert dupes == []
-    assert con.execute("SELECT count(*) FROM fact_player_map WHERE map_name ILIKE 'all maps'").fetchone()[0] == 0
+    rollups = con.execute("SELECT count(*) FROM fact_player_map JOIN fact_map_result USING (match_map_id) WHERE map_name ILIKE 'all maps'").fetchone()[0]
+    assert rollups == 0
