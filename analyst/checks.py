@@ -163,9 +163,9 @@ def _candidates(df: pd.DataFrame) -> set[float]:
     return out
 
 
-def check_explanation(explanation: str, df: pd.DataFrame, year_range: tuple[int, int]) -> CheckResult:
-    """Every number the AI writes must come from the result table (catches made-up numbers)."""
-    allowed = _candidates(df)
+def check_explanation(explanation: str, df: pd.DataFrame, year_range: tuple[int, int], question: str = "") -> CheckResult:
+    """Every number the AI writes must come from the result table or the question (catches made-up numbers)."""
+    allowed = _candidates(df) | {round(float(q.replace(",", "")), 1) for q in NUMBER.findall(question or "")}
     bad = []
     for raw in NUMBER.findall(explanation or ""):
         n = float(raw.replace(",", ""))

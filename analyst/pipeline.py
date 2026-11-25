@@ -95,7 +95,7 @@ def answer(question: str, con: duckdb.DuckDBPyConnection, llm: LLM, ents: Entiti
         a.df = df
 
         a.explanation = llm.complete(build_explain_prompt(question, df.head(50).to_csv(index=False)))
-        flags = [check_sanity(df, year_range), check_explanation(a.explanation, df, year_range)]
+        flags = [check_sanity(df, year_range), check_explanation(a.explanation, df, year_range, question)]
         a.checks.extend(flags)
         failed = [f for f in flags if not f.passed]
         if failed:

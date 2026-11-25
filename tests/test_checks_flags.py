@@ -65,3 +65,17 @@ def test_empty():
 
 def test_not_empty():
     assert check_empty(pd.DataFrame({"agent": ["jett"]})).passed
+
+
+def test_explanation_allows_numbers_from_the_question():
+    # regression: "Which 5 agents..." -> "The 5 agents ..." was flagged as a made-up number
+    df = pd.DataFrame({"agent_name": ["omen"], "pick_rate_pct": [62.2]})
+    res = check_explanation("The 5 agents with the highest pick rates: omen at 62.2.", df, YEARS,
+                            question="Which 5 agents had the highest pick rate?")
+    assert res.passed, res.reason
+
+
+def test_explanation_still_flags_numbers_not_in_question_or_result():
+    df = pd.DataFrame({"agent_name": ["omen"], "pick_rate_pct": [62.2]})
+    res = check_explanation("The 5 agents: omen at 71.0.", df, YEARS, question="Which 5 agents?")
+    assert not res.passed and "71" in res.reason
