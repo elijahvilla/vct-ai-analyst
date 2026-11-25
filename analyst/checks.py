@@ -4,6 +4,7 @@ Blocking (answer is never shown if they fail): safety, runs, grounding.
 Flag-only (answer shown with a warning): sanity, explanation.
 Empty result: replaced by an honest "no data" message.
 """
+import re
 from dataclasses import dataclass
 
 import duckdb
@@ -103,3 +104,65 @@ def check_grounding(sql: str, mentioned: dict[str, list[str]], schema: dict[str,
     if problems:
         return CheckResult("grounding", False, True, "; ".join(dict.fromkeys(problems)))
     return CheckResult("grounding", True, True)
+
+
+# ---------------------------------------------------------------- 4. sanity
+RATE_COLS = re.compile(r"rate|pct|percent|ratio", re.I)
+COUNT_COLS = re.compile(r"count|kills|deaths|assists|picks|matches|maps|rounds|wins|losses", re.I)
+
+
+def check_sanity(df: pd.DataFrame, year_range: tuple[int, int]) -> CheckResult:
+    """Numbers must be possible: rates within 0-1 or 0-100, counts not negative, years in the data."""
+    problems: list[str] = []
+    for col in df.columns:
+        values = pd.to_numeric(df[col], errors="coerce").dropna()
+        if values.empty:
+            continue
+        name = str(col)
+        if RATE_COLS.search(name) and (values.min() < 0 or values.max() > 100):
+            problems.append(f"{name} has values outside 0-100 (max {values.max():g})")
+        if COUNT_COLS.search(name) and values.min() < 0:
+            problems.append(f"{name} has negative values (min {values.min():g})")
+        if name.lower() == "year":
+            outside = sorted({int(v) for v in values if not year_range[0] <= v <= year_range[1]})
+            if outside:
+                problems.append(f"year {outside[0]} is outside the data ({year_range[0]}-{year_range[1]})")
+    if problems:
+        return CheckResult("sanity", False, False, "; ".join(problems))
+    return CheckResult("sanity", True, False)
+
+
+# ---------------------------------------------------------------- 5. explanation
+NUMBER = re.compile(r"(?<![\w.])-?\d+(?:,\d{3})*(?:\.\d+)?")
+
+
+def _candidates(df: pd.DataFrame) -> set[float]:
+    """Every number in the result, plus its percent/fraction twin, rounded to 1 decimal."""
+    out: set[float] = set()
+    for col in df.columns:
+        for v in pd.to_numeric(df[col], errors="coerce").dropna():
+            v = float(v)
+            out |= {round(v, 1), round(v * 100, 1), round(v / 100, 1), float(round(v))}
+    return out
+
+
+def check_explanation(explanation: str, df: pd.DataFrame, year_range: tuple[int, int]) -> CheckResult:
+    """Every number the AI writes must come from the result table (catches made-up numbers)."""
+    allowed = _candidates(df)
+    bad = []
+    for raw in NUMBER.findall(explanation or ""):
+        n = float(raw.replace(",", ""))
+        if n.is_integer() and year_range[0] - 5 <= n <= year_range[1] + 1:
+            continue  # a year, e.g. "Champions 2024"
+        if round(n, 1) not in allowed and float(round(n)) not in allowed:
+            bad.append(raw)
+    if bad:
+        return CheckResult("explanation", False, False, f"numbers not in the result: {', '.join(bad)}")
+    return CheckResult("explanation", True, False)
+
+
+# ---------------------------------------------------------------- 6. empty
+def check_empty(df: pd.DataFrame) -> CheckResult:
+    if df is None or len(df) == 0:
+        return CheckResult("empty", False, False, "the query returned no rows")
+    return CheckResult("empty", True, False)
