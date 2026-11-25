@@ -109,3 +109,34 @@ def test_grounding_event_partial_name_ok(ctx):
     schema, ents = ctx
     res = check_grounding("SELECT 1", {"events": ["Champions 2024"]}, schema, ents)
     assert res.passed, res.reason
+
+
+def _sqlglot_cannot_parse(monkeypatch):
+    import sqlglot
+
+    def boom(*a, **k):
+        raise sqlglot.errors.ParseError("column does not support CTE")
+    monkeypatch.setattr("analyst.checks.sqlglot.parse", boom)
+    monkeypatch.setattr("analyst.checks.sqlglot.parse_one", boom)
+
+
+def test_safety_falls_back_to_duckdb_parser(monkeypatch, mini_con):
+    # regression: a real AI query that DuckDB accepts but sqlglot could not parse was refused
+    _sqlglot_cannot_parse(monkeypatch)
+    res, sql = check_safety("SELECT agent_name FROM dim_agent")
+    assert res.passed, res.reason
+    assert "1000" in sql
+    assert len(mini_con.execute(sql).fetchdf()) == 4
+
+
+def test_safety_fallback_still_blocks_writes(monkeypatch):
+    _sqlglot_cannot_parse(monkeypatch)
+    res, _ = check_safety("DELETE FROM dim_agent")
+    assert not res.passed
+
+
+def test_grounding_falls_back_to_entities_only(monkeypatch, ctx):
+    schema, ents = ctx
+    _sqlglot_cannot_parse(monkeypatch)
+    assert check_grounding("SELECT agent_name FROM dim_agent", {"agents": ["jett"]}, schema, ents).passed
+    assert not check_grounding("SELECT agent_name FROM dim_agent", {"agents": ["Phoenixx"]}, schema, ents).passed

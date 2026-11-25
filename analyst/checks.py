@@ -30,16 +30,26 @@ class CheckResult:
 
 # ---------------------------------------------------------------- 1. safety
 def check_safety(sql: str) -> tuple[CheckResult, str]:
-    """Only one read-only SELECT, and never more than ROW_LIMIT rows."""
+    """Only one read-only SELECT, and never more than ROW_LIMIT rows.
+
+    DuckDB's own parser decides what the statement is (it understands every query DuckDB can run).
+    sqlglot then applies the row limit; if sqlglot can't read the query, it gets wrapped instead.
+    """
     try:
-        statements = [s for s in sqlglot.parse(sql, read="duckdb") if s is not None]
-    except sqlglot.errors.ParseError as e:
+        statements = duckdb.extract_statements(sql)
+    except duckdb.Error as e:
         return CheckResult("safety", False, True, f"not valid SQL: {str(e).splitlines()[0]}"), sql
     if len(statements) != 1:
         return CheckResult("safety", False, True, f"expected one statement, got {len(statements)}"), sql
-    stmt = statements[0]
+    if statements[0].type != duckdb.StatementType.SELECT:
+        return CheckResult("safety", False, True, f"only SELECT queries are allowed (got {statements[0].type.name})"), sql
+    try:
+        stmt = sqlglot.parse_one(sql, read="duckdb")
+    except sqlglot.errors.ParseError:
+        stmt = None
     if not isinstance(stmt, exp.Query) or any(stmt.find_all(*WRITE_NODES)):
-        return CheckResult("safety", False, True, f"only SELECT queries are allowed (got {type(stmt).__name__})"), sql
+        inner = sql.strip().rstrip(";")
+        return CheckResult("safety", True, True), f"SELECT * FROM ({inner}) AS limited LIMIT {ROW_LIMIT}"
     limit = stmt.args.get("limit")
     current = None
     if limit is not None:
@@ -78,9 +88,24 @@ def check_grounding(sql: str, mentioned: dict[str, list[str]], schema: dict[str,
     problems: list[str] = []
     try:
         tree = sqlglot.parse_one(sql, read="duckdb")
-    except sqlglot.errors.ParseError as e:
-        return CheckResult("grounding", False, True, f"not valid SQL: {str(e).splitlines()[0]}")
+    except sqlglot.errors.ParseError:
+        tree = None  # sqlglot can't read it: tables/columns are left to the "runs" check
 
+    if tree is not None:
+        problems += _schema_problems(tree, schema)
+
+    for kind in ENTITY_KINDS:
+        for name in (mentioned or {}).get(kind, []) or []:
+            if name and not _known(kind, name, ents):
+                problems.append(f"no {kind[:-1]} called '{name}' in the data")
+
+    if problems:
+        return CheckResult("grounding", False, True, "; ".join(dict.fromkeys(problems)))
+    return CheckResult("grounding", True, True)
+
+
+def _schema_problems(tree: exp.Expression, schema: dict[str, list[str]]) -> list[str]:
+    problems: list[str] = []
     cte_names = {c.alias_or_name.lower() for c in tree.find_all(exp.CTE)}
     known_tables = {t.lower() for t in schema}
     for table in tree.find_all(exp.Table):
@@ -95,15 +120,7 @@ def check_grounding(sql: str, mentioned: dict[str, list[str]], schema: dict[str,
         name = col.name.lower()
         if name and name not in known_columns and name not in defined_here:
             problems.append(f"unknown column '{col.name}'")
-
-    for kind in ENTITY_KINDS:
-        for name in (mentioned or {}).get(kind, []) or []:
-            if name and not _known(kind, name, ents):
-                problems.append(f"no {kind[:-1]} called '{name}' in the data")
-
-    if problems:
-        return CheckResult("grounding", False, True, "; ".join(dict.fromkeys(problems)))
-    return CheckResult("grounding", True, True)
+    return problems
 
 
 # ---------------------------------------------------------------- 4. sanity
