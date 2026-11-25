@@ -3,9 +3,21 @@
 Set GEMINI_API_KEY (free at https://aistudio.google.com) and optionally GEMINI_MODEL.
 """
 import os
+import tomllib
 from typing import Protocol
 
 DEFAULT_MODEL = "gemini-flash-latest"  # Google's alias for the current free-tier Flash model
+
+
+def read_secret(name: str, path: str = ".streamlit/secrets.toml") -> str | None:
+    """Environment variable first, then the private (git-ignored) Streamlit secrets file."""
+    if os.environ.get(name):
+        return os.environ[name]
+    try:
+        with open(path, "rb") as f:
+            return tomllib.load(f).get(name)
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        return None
 
 
 class LLMUnavailable(Exception):
@@ -20,8 +32,8 @@ class GeminiLLM:
     def __init__(self, api_key: str | None = None, model: str | None = None):
         from google import genai
 
-        key = api_key or os.environ.get("GEMINI_API_KEY")
-        if not key:
+        key = api_key or read_secret("GEMINI_API_KEY")
+        if not key or key == "paste-your-key-here":
             raise LLMUnavailable("GEMINI_API_KEY is not set")
         self.model = model or os.environ.get("GEMINI_MODEL", DEFAULT_MODEL)
         self._client = genai.Client(api_key=key)

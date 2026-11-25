@@ -51,3 +51,17 @@ def test_fake_llm_returns_and_raises_in_order():
     except LLMUnavailable:
         pass
     assert llm.prompts == ["p1", "p2"]
+
+
+def test_read_secret_from_streamlit_file(tmp_path, monkeypatch):
+    from analyst.llm import read_secret
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    f = tmp_path / "secrets.toml"
+    f.write_text('# comment\nGEMINI_API_KEY = "abc123"\n')
+    assert read_secret("GEMINI_API_KEY", str(f)) == "abc123"
+
+
+def test_read_secret_prefers_environment(tmp_path, monkeypatch):
+    from analyst.llm import read_secret
+    monkeypatch.setenv("GEMINI_API_KEY", "from-env")
+    assert read_secret("GEMINI_API_KEY", str(tmp_path / "missing.toml")) == "from-env"
