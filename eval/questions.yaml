@@ -1,0 +1,254 @@
+# Test set: questions with hand-written correct SQL ("gold"). gold_sql: null means the right
+# behavior is to refuse or say "no data" (the question can't be answered from this data).
+# Categories: simple, filter, aggregate, join, tricky, impossible.
+
+# ---------- simple
+- id: s1
+  category: simple
+  question: How many maps were played at Valorant Champions 2024?
+  gold_sql: |
+    SELECT count(DISTINCT m.match_map_id) FROM fact_map_result m JOIN dim_event e USING (event_id)
+    WHERE e.event_name = 'Valorant Champions 2024'
+- id: s2
+  category: simple
+  question: How many different agents were played in 2025?
+  gold_sql: |
+    SELECT count(DISTINCT agent_name) FROM fact_team_comp WHERE year = 2025
+- id: s3
+  category: simple
+  question: Which map was played the most in 2024?
+  gold_sql: |
+    SELECT map_name, count(*) AS maps FROM fact_map_result WHERE year = 2024 GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+- id: s4
+  category: simple
+  question: How many maps went to overtime in 2025?
+  gold_sql: |
+    SELECT count(*) FROM fact_map_result WHERE year = 2025 AND went_overtime
+- id: s5
+  category: simple
+  question: What role is Tejo?
+  gold_sql: |
+    SELECT role FROM dim_agent WHERE agent_name = 'tejo'
+- id: s6
+  category: simple
+  question: How many international events were there in 2023?
+  gold_sql: |
+    SELECT count(*) FROM dim_event WHERE year = 2023 AND is_international
+- id: s7
+  category: simple
+  question: How many teams played at Valorant Champions 2025?
+  gold_sql: |
+    SELECT count(DISTINCT t) FROM (
+      SELECT team_a_id AS t FROM fact_map_result m JOIN dim_event e USING (event_id) WHERE e.event_name = 'Valorant Champions 2025'
+      UNION SELECT team_b_id FROM fact_map_result m JOIN dim_event e USING (event_id) WHERE e.event_name = 'Valorant Champions 2025')
+- id: s8
+  category: simple
+  question: Which map was played the most in 2023?
+  gold_sql: |
+    SELECT map_name, count(*) AS maps FROM fact_map_result WHERE year = 2023 GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+
+# ---------- filter
+- id: f1
+  category: filter
+  question: Which players had more than 400 kills on Jett in 2025?
+  gold_sql: |
+    SELECT p.player_name, sum(f.kills) AS kills FROM fact_player_map f
+    JOIN fact_map_result m USING (match_map_id) JOIN dim_player p USING (player_id)
+    WHERE m.year = 2025 AND f.agent_name = 'jett' GROUP BY 1 HAVING sum(f.kills) > 400
+- id: f2
+  category: filter
+  question: Which maps were played at Masters Madrid 2024?
+  gold_sql: |
+    SELECT DISTINCT m.map_name FROM fact_map_result m JOIN dim_event e USING (event_id)
+    WHERE e.event_name = 'Champions Tour 2024: Masters Madrid'
+- id: f3
+  category: filter
+  question: Which agents were played on Abyss in 2024?
+  gold_sql: |
+    SELECT DISTINCT agent_name FROM fact_team_comp WHERE year = 2024 AND map_name = 'Abyss'
+- id: f4
+  category: filter
+  question: How many maps did Sentinels win in 2024?
+  gold_sql: |
+    SELECT count(*) FROM fact_map_result m JOIN dim_team t ON t.team_id = m.winner_team_id
+    WHERE m.year = 2024 AND t.team_name = 'Sentinels'
+- id: f5
+  category: filter
+  question: Which teams won at least 20 maps in 2025?
+  gold_sql: |
+    SELECT t.team_name, count(*) AS maps_won FROM fact_map_result m JOIN dim_team t ON t.team_id = m.winner_team_id
+    WHERE m.year = 2025 GROUP BY 1 HAVING count(*) >= 20
+- id: f6
+  category: filter
+  question: Which controllers were picked at Valorant Champions 2024?
+  gold_sql: |
+    SELECT DISTINCT c.agent_name FROM fact_team_comp c JOIN dim_agent a USING (agent_name) JOIN dim_event e USING (event_id)
+    WHERE e.event_name = 'Valorant Champions 2024' AND a.role = 'controller'
+- id: f7
+  category: filter
+  question: How many kills did aspas get in 2025?
+  gold_sql: |
+    SELECT sum(f.kills) FROM fact_player_map f JOIN fact_map_result m USING (match_map_id) JOIN dim_player p USING (player_id)
+    WHERE m.year = 2025 AND p.player_name = 'aspas'
+- id: f8
+  category: filter
+  question: How many maps did FNATIC play in 2023?
+  gold_sql: |
+    SELECT count(*) FROM fact_map_result m JOIN dim_team t ON t.team_id IN (m.team_a_id, m.team_b_id)
+    WHERE m.year = 2023 AND t.team_name = 'FNATIC'
+
+# ---------- aggregate
+- id: a1
+  category: aggregate
+  question: Which 5 agents had the highest pick rate at Valorant Champions 2024?
+  gold_sql: |
+    WITH ev AS (SELECT event_id FROM dim_event WHERE event_name = 'Valorant Champions 2024'),
+    maps AS (SELECT count(*) AS n FROM fact_map_result WHERE event_id IN (SELECT event_id FROM ev))
+    SELECT agent_name, round(100.0 * count(DISTINCT (game_id, team_id)) / (2 * (SELECT n FROM maps)), 1) AS pick_rate_pct
+    FROM fact_team_comp WHERE event_id IN (SELECT event_id FROM ev)
+    GROUP BY 1 ORDER BY 2 DESC LIMIT 5
+- id: a2
+  category: aggregate
+  question: Which agent had the highest win rate on Lotus in 2025, among agents picked at least 30 times?
+  gold_sql: |
+    SELECT agent_name, round(100.0 * avg((result = 'win')::INT), 1) AS win_rate_pct FROM fact_team_comp
+    WHERE year = 2025 AND map_name = 'Lotus' GROUP BY 1 HAVING count(*) >= 30 ORDER BY 2 DESC LIMIT 1
+- id: a3
+  category: aggregate
+  question: What was the average ACS of Jett players in 2024?
+  gold_sql: |
+    SELECT round(avg(f.acs), 1) FROM fact_player_map f JOIN fact_map_result m USING (match_map_id)
+    WHERE m.year = 2024 AND f.agent_name = 'jett'
+- id: a4
+  category: aggregate
+  question: Which player had the highest average rating in 2025, among players with at least 50 maps?
+  gold_sql: |
+    SELECT p.player_name, round(avg(f.rating), 2) AS avg_rating FROM fact_player_map f
+    JOIN fact_map_result m USING (match_map_id) JOIN dim_player p USING (player_id)
+    WHERE m.year = 2025 GROUP BY 1 HAVING count(*) >= 50 ORDER BY 2 DESC LIMIT 1
+- id: a5
+  category: aggregate
+  question: How many times was each role picked at Valorant Champions 2025?
+  gold_sql: |
+    SELECT a.role, count(*) AS picks FROM fact_team_comp c JOIN dim_agent a USING (agent_name) JOIN dim_event e USING (event_id)
+    WHERE e.event_name = 'Valorant Champions 2025' GROUP BY 1
+- id: a6
+  category: aggregate
+  question: What was the average number of rounds per map in 2024?
+  gold_sql: |
+    SELECT round(avg(team_a_score + team_b_score), 1) FROM fact_map_result WHERE year = 2024
+- id: a7
+  category: aggregate
+  question: How many maps were played in each year?
+  gold_sql: |
+    SELECT year, count(*) AS maps FROM fact_map_result GROUP BY 1
+- id: a8
+  category: aggregate
+  question: Which agent was picked the most across all of 2026?
+  gold_sql: |
+    SELECT agent_name, count(*) AS picks FROM fact_team_comp WHERE year = 2026 GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+
+# ---------- join
+- id: j1
+  category: join
+  question: Which team had the highest map win rate in 2024, among teams with at least 30 maps?
+  gold_sql: |
+    WITH played AS (
+      SELECT t.team_name, (m.winner_team_id = t.team_id)::INT AS won FROM fact_map_result m
+      JOIN dim_team t ON t.team_id IN (m.team_a_id, m.team_b_id) WHERE m.year = 2024)
+    SELECT team_name, round(100.0 * avg(won), 1) AS win_rate_pct FROM played GROUP BY 1 HAVING count(*) >= 30
+    ORDER BY 2 DESC LIMIT 1
+- id: j2
+  category: join
+  question: Which players played at least 50 maps for Paper Rex in 2025?
+  gold_sql: |
+    SELECT p.player_name, count(*) AS maps FROM fact_player_map f JOIN fact_map_result m USING (match_map_id)
+    JOIN dim_player p USING (player_id) JOIN dim_team t ON t.team_id = f.team_id
+    WHERE m.year = 2025 AND t.team_name = 'Paper Rex' GROUP BY 1 HAVING count(*) >= 50
+- id: j3
+  category: join
+  question: What is Sentinels' map win rate on Ascent across all years?
+  gold_sql: |
+    SELECT round(100.0 * avg((m.winner_team_id = t.team_id)::INT), 1) AS win_rate_pct FROM fact_map_result m
+    JOIN dim_team t ON t.team_id IN (m.team_a_id, m.team_b_id) WHERE t.team_name = 'Sentinels' AND m.map_name = 'Ascent'
+- id: j4
+  category: join
+  question: Which team picked Viper the most in 2025?
+  gold_sql: |
+    SELECT t.team_name, count(*) AS picks FROM fact_team_comp c JOIN dim_team t USING (team_id)
+    WHERE c.year = 2025 AND c.agent_name = 'viper' GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+- id: j5
+  category: join
+  question: Which team won the most maps at Valorant Champions 2023?
+  gold_sql: |
+    SELECT t.team_name, count(*) AS maps_won FROM fact_map_result m JOIN dim_event e USING (event_id)
+    JOIN dim_team t ON t.team_id = m.winner_team_id WHERE e.event_name = 'Valorant Champions 2023'
+    GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+- id: j6
+  category: join
+  question: Which agent did TenZ play the most in 2023?
+  gold_sql: |
+    SELECT f.agent_name, count(*) AS maps FROM fact_player_map f JOIN fact_map_result m USING (match_map_id)
+    JOIN dim_player p USING (player_id) WHERE m.year = 2023 AND p.player_name = 'TenZ' GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+- id: j7
+  category: join
+  question: How many first kills did Demon1 get at Valorant Champions 2023?
+  gold_sql: |
+    SELECT sum(f.first_kills) FROM fact_player_map f JOIN fact_map_result m USING (match_map_id)
+    JOIN dim_event e USING (event_id) JOIN dim_player p USING (player_id)
+    WHERE e.event_name = 'Valorant Champions 2023' AND p.player_name = 'Demon1'
+- id: j8
+  category: join
+  question: Which player had the most total kills at Valorant Champions 2024?
+  gold_sql: |
+    SELECT p.player_name, sum(f.kills) AS kills FROM fact_player_map f JOIN fact_map_result m USING (match_map_id)
+    JOIN dim_event e USING (event_id) JOIN dim_player p USING (player_id)
+    WHERE e.event_name = 'Valorant Champions 2024' GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+
+# ---------- tricky (wording and naming traps)
+- id: t1
+  category: tricky
+  question: What's KAY/O's win rate on Bind in 2024?
+  gold_sql: |
+    SELECT round(100.0 * avg((result = 'win')::INT), 1) AS win_rate_pct FROM fact_team_comp
+    WHERE year = 2024 AND map_name = 'Bind' AND agent_name = 'kayo'
+- id: t2
+  category: tricky
+  question: Which duelist had the highest pick count at international events in 2022?
+  gold_sql: |
+    SELECT c.agent_name, count(*) AS picks FROM fact_team_comp c JOIN dim_agent a USING (agent_name) JOIN dim_event e USING (event_id)
+    WHERE e.year = 2022 AND e.is_international AND a.role = 'duelist' GROUP BY 1 ORDER BY 2 DESC LIMIT 1
+- id: t3
+  category: tricky
+  question: how many maps was jett picked on in 2024
+  gold_sql: |
+    SELECT count(DISTINCT game_id) FROM fact_team_comp WHERE year = 2024 AND agent_name = 'jett'
+- id: t4
+  category: tricky
+  question: Which teams beat Sentinels on Lotus in 2025?
+  gold_sql: |
+    SELECT DISTINCT w.team_name FROM fact_map_result m JOIN dim_team s ON s.team_id IN (m.team_a_id, m.team_b_id)
+    JOIN dim_team w ON w.team_id = m.winner_team_id
+    WHERE m.year = 2025 AND m.map_name = 'Lotus' AND s.team_name = 'Sentinels' AND w.team_id <> s.team_id
+
+# ---------- impossible (refusing is correct)
+- id: i1
+  category: impossible
+  question: What was Phoenixx's win rate on Ascent?
+  gold_sql: null
+- id: i2
+  category: impossible
+  question: Which team won Valorant Champions 2019?
+  gold_sql: null
+- id: i3
+  category: impossible
+  question: How many kills did the agent Shadowblade get in 2024?
+  gold_sql: null
+- id: i4
+  category: impossible
+  question: Which match had the most Twitch viewers at Champions 2024?
+  gold_sql: null
+- id: i5
+  category: impossible
+  question: What was the prize pool of Masters Madrid?
+  gold_sql: null
