@@ -25,3 +25,15 @@ def test_build_stacks_years_and_runs_sql(tmp_path):
     assert con.execute("SELECT count(*) FROM raw_2024_overview").fetchone()[0] == 2
     assert con.execute("SELECT count(*) FROM raw_all_all_teams_ids").fetchone()[0] == 1
     assert dict(con.execute("SELECT year, k FROM kills_by_year").fetchall()) == {2023: 20, 2024: 47}
+
+
+def test_build_handles_quoted_comma_deep_in_file(tmp_path):
+    # regression: "Stay Small, Stay Second" appears after the CSV sniffer's default sample
+    raw = tmp_path / "raw"
+    rows = "".join(f"Team{i},sova,1\n" for i in range(30000))
+    _write(raw / "vct_2021" / "agents" / "teams_picked_agents.csv",
+           "Team,Agent,Wins\n" + rows + '"Stay Small, Stay Second",raze,0\n')
+    db = tmp_path / "t.duckdb"
+    build(raw_dir=str(raw), db_path=str(db), sql_dir=str(tmp_path / "nosql"))
+    con = duckdb.connect(str(db), read_only=True)
+    assert con.execute("SELECT Agent FROM raw_teams_picked_agents WHERE Team = 'Stay Small, Stay Second'").fetchone() == ("raze",)

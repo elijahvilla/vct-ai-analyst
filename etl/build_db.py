@@ -13,6 +13,9 @@ from collections import defaultdict
 
 import duckdb
 
+# Always honor double-quoted fields (team names contain commas) and sniff the whole file.
+CSV_OPTS = "quote='\"', escape='\"', sample_size=-1"
+
 
 def _q(path: str) -> str:
     return path.replace("\\", "/").replace("'", "''")
@@ -29,10 +32,10 @@ def build(raw_dir: str = "data/raw", db_path: str = "data/vct.duckdb", sql_dir: 
         m = re.match(r"vct_(\d{4})/", rel)
         if m:
             year = int(m.group(1))
-            con.execute(f"CREATE VIEW raw_{year}_{stem} AS SELECT * FROM read_csv_auto('{_q(path)}', all_varchar=false)")
+            con.execute(f"CREATE VIEW raw_{year}_{stem} AS SELECT * FROM read_csv_auto('{_q(path)}', {CSV_OPTS})")
             by_stem[stem].append((year, f"raw_{year}_{stem}"))
         elif rel.startswith("all_ids/"):
-            con.execute(f"CREATE VIEW raw_all_{stem} AS SELECT * FROM read_csv_auto('{_q(path)}')")
+            con.execute(f"CREATE VIEW raw_all_{stem} AS SELECT * FROM read_csv_auto('{_q(path)}', {CSV_OPTS})")
     for stem, parts in by_stem.items():
         union = " UNION ALL BY NAME ".join(f"SELECT {y} AS year, * FROM {v}" for y, v in parts)
         con.execute(f"CREATE VIEW raw_{stem} AS {union}")
