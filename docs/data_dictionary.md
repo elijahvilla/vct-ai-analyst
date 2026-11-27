@@ -81,21 +81,22 @@ Pro Valorant (VCT) maps from 2021 to 2026. Only the tables below may be queried.
 - `team_maps_won` INTEGER — of those, how many the team won
 - `maps_with_agent` INTEGER — maps where at least one team played the agent (both teams picking it counts 1)
 - `maps_played` INTEGER — maps played on that map at that event
-- `pick_rate_pct`, `win_rate_pct` DOUBLE — for this single row only
+- (no percentage columns: compute rates from the counts, see below)
 
 ### metric_team_event_map — one row per event + map + team
-- `event_id`, `year`, `map_name`, `team_id`, `maps_played`, `maps_won`, `win_rate_pct`
+- `event_id`, `year`, `map_name`, `team_id`, `maps_played`, `maps_won`
 
 ### metric_player_event — one row per event + player + team
 - `event_id`, `year`, `player_id`, `team_id`, `maps_played`, `kills`, `deaths`, `assists`, `first_kills`,
   `avg_rating`, `avg_acs` (averages over that event's maps)
 
 ## How to compute common stats
-- **Combining rows: never average the `_pct` columns.** Sum the counts, then divide:
+- **Rates: always sum the counts, then divide** (never average percentages):
   - agent pick rate = `100 * sum(team_maps) / (2 * sum(maps_played))`
   - agent win rate  = `100 * sum(team_maps_won) / sum(team_maps)`
   - team win rate   = `100 * sum(maps_won) / sum(maps_played)`
   - player average rating over several events = weight by maps: `sum(avg_rating * maps_played) / sum(maps_played)`
+- **Win rates need a sample:** for "best"/"highest win rate" rankings, require at least 20 team_maps unless the question says otherwise.
 - **"How many maps was X picked on"** = `sum(maps_with_agent)`; "how many times was X picked" = `sum(team_maps)`.
 - **Map count** = `count(DISTINCT match_map_id)` in fact tables — never count player rows as maps.
 - Filter events with `dim_event` (name, year, is_international) and join on `event_id`.

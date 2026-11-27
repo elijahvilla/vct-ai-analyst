@@ -4,7 +4,7 @@ from analyst.clarify import clarify_options
 def test_vague_best_map_asks_for_measure():
     assert clarify_options("What is the best map for Chamber?") == [
         "What is the best map for Chamber? (by most picks)",
-        "What is the best map for Chamber? (by highest win rate)",
+        "What is the best map for Chamber? (by highest win rate, at least 20 picks)",
     ]
 
 

@@ -15,5 +15,5 @@ def clarify_options(question: str) -> list[str] | None:
     if re.search(r"\bplayers?\b|\bwho\b", q, re.I):
         measures = ["highest average rating", "most kills"]
     else:
-        measures = ["most picks", "highest win rate"]
+        measures = ["most picks", "highest win rate, at least 20 picks"]
     return [f"{q} (by {m})" for m in measures]

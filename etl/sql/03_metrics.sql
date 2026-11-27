@@ -1,5 +1,6 @@
 -- 03_metrics.sql — ready-made metrics with the tricky math done once, correctly.
 -- The AI is told to prefer these tables, so it doesn't re-derive pick and win rates each time.
+-- Only counts are stored: a per-row percentage invites averaging percentages (a wrong answer).
 
 -- One row per event + map + agent.
 --   team_maps        times a team played the agent on that map (both teams picking it = 2)
@@ -25,9 +26,7 @@ SELECT m.event_id, m.year, m.map_name, ea.agent_name, a.role,
        coalesce(p.team_maps, 0)       AS team_maps,
        coalesce(p.team_maps_won, 0)   AS team_maps_won,
        coalesce(p.maps_with_agent, 0) AS maps_with_agent,
-       m.maps_played,
-       round(100.0 * coalesce(p.team_maps, 0) / (2 * m.maps_played), 1)       AS pick_rate_pct,
-       round(100.0 * p.team_maps_won / nullif(p.team_maps, 0), 1)             AS win_rate_pct
+       m.maps_played
 FROM maps m
 JOIN event_agents ea USING (event_id)
 JOIN dim_agent a ON a.agent_name = ea.agent_name
@@ -41,8 +40,7 @@ WITH sides AS (
     SELECT event_id, year, map_name, team_b_id, (winner_team_id = team_b_id)::INT FROM fact_map_result
 )
 SELECT event_id, year, map_name, team_id,
-       count(*) AS maps_played, sum(won) AS maps_won,
-       round(100.0 * sum(won) / count(*), 1) AS win_rate_pct
+       count(*) AS maps_played, sum(won) AS maps_won
 FROM sides GROUP BY ALL;
 
 -- One row per event + player + team.

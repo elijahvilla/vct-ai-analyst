@@ -105,3 +105,10 @@ def test_metric_year_pick_rate_matches_raw_facts(con):
                                  WHERE year = 2024 AND agent_name = 'chamber') / (2 * count(*)), 1)
                                  FROM fact_map_result WHERE year = 2024""").fetchone()[0]
     assert from_metric == from_facts
+
+
+def test_metric_tables_have_no_rate_columns_to_average(con):
+    # regression: the AI averaged per-row pick_rate_pct and reported Omen 64.7% instead of 62.2%
+    cols = {r[0] for r in con.execute("""SELECT column_name FROM information_schema.columns
+                                         WHERE table_name IN ('metric_agent_event_map', 'metric_team_event_map')""").fetchall()}
+    assert not {c for c in cols if c.endswith("_pct")}
