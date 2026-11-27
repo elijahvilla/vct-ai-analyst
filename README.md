@@ -35,7 +35,13 @@ Vague questions ("best map for Chamber?") get a **"Did you mean…?"** choice be
 
 ## Accuracy
 
-Final numbers are being re-run after the latest fixes. The current report is in [`eval/results/summary.md`](eval/results/summary.md).
+| Version | Model alone | With checks |
+|---|---|---|
+| 1. First working version | 70.7% | **82.9%** |
+| 2. Model may say "can't answer"; event names in any word order | 68.3% | **82.9%** |
+| 3. Ready-made metric tables (pick rates, records, season totals) | 80.5% | **82.9%** |
+
+Share of 41 test questions answered correctly. The biggest change: on questions the data can't answer, the model alone answered **0 of 5** correctly at first (it invented answers every time), and the checks blocked the made-up player, event and agent questions. A fourth run with the latest fixes (counts-only metrics, a catalog of agents, maps and events) is pending; the free model tier caps runs per day.
 
 41 questions across six types (simple, filter, aggregate, join, tricky wording, impossible), each with a hand-checked correct answer. Full report: [`eval/results/summary.md`](eval/results/summary.md). Run it yourself with `python -m eval.run_eval --checks on`.
 
