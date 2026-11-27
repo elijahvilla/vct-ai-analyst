@@ -42,3 +42,50 @@ def test_pretty_sql_formats_one_line_query():
 def test_pretty_sql_falls_back_on_unparseable():
     from app.view import pretty_sql
     assert pretty_sql("not sql at all ((") == "not sql at all (("
+
+
+def test_chart_spec_ranking_is_bar():
+    import pandas as pd
+    from app.view import chart_spec
+    df = pd.DataFrame({"agent_name": ["omen", "sova", "viper"], "pick_rate_pct": [62.2, 52.3, 50.0]})
+    assert chart_spec(df) == {"kind": "bar", "x": "agent_name", "y": "pick_rate_pct"}
+
+
+def test_chart_spec_year_trend_is_line():
+    import pandas as pd
+    from app.view import chart_spec
+    df = pd.DataFrame({"year": [2021, 2022, 2023], "maps": [14441, 8856, 900]})
+    assert chart_spec(df) == {"kind": "line", "x": "year", "y": "maps"}
+
+
+def test_chart_spec_skips_single_values_and_text_only():
+    import pandas as pd
+    from app.view import chart_spec
+    assert chart_spec(pd.DataFrame({"kills": [731]})) is None
+    assert chart_spec(pd.DataFrame({"agent_name": ["omen", "sova"]})) is None
+    assert chart_spec(pd.DataFrame({"player": ["aspas"], "kills": [731]})) is None
+
+
+def test_chart_spec_handles_decimal_numbers():
+    # regression: DuckDB returns ROUND(...) on numerics as Decimal objects, which pandas sees as text
+    from decimal import Decimal
+    import pandas as pd
+    from app.view import chart_spec
+    df = pd.DataFrame({"agent_name": ["omen", "sova"], "pick_rate_pct": [Decimal("62.2"), Decimal("52.3")]})
+    assert chart_spec(df) == {"kind": "bar", "x": "agent_name", "y": "pick_rate_pct"}
+
+
+def test_build_chart_bar_from_decimal_ranking():
+    from decimal import Decimal
+    import pandas as pd
+    from app.view import build_chart
+    df = pd.DataFrame({"agent_name": ["omen", "sova"], "pick_rate_pct": [Decimal("62.2"), Decimal("52.3")]})
+    spec = build_chart(df).to_dict()
+    assert spec["mark"]["type"] == "bar" and spec["mark"]["color"] == "#FF4655"
+    assert spec["encoding"]["y"]["field"] == "agent_name"
+
+
+def test_build_chart_none_for_single_row():
+    import pandas as pd
+    from app.view import build_chart
+    assert build_chart(pd.DataFrame({"player": ["aspas"], "kills": [731]})) is None

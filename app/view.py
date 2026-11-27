@@ -33,3 +33,41 @@ def pretty_sql(sql: str) -> str:
         return sqlglot.transpile(sql, read="duckdb", write="duckdb", pretty=True)[0]
     except Exception:
         return sql
+
+
+def chart_spec(df) -> dict | None:
+    """Pick a chart for a result: year trends -> line, rankings of names -> bar, else none."""
+    import pandas as pd
+
+    if df is None or len(df) < 2 or len(df) > 30:
+        return None
+    def is_num(c) -> bool:
+        return pd.api.types.is_numeric_dtype(df[c]) or pd.to_numeric(df[c], errors="coerce").notna().all()
+
+    numeric = [c for c in df.columns if is_num(c) and str(c).lower() != "year"]
+    text = [c for c in df.columns if not is_num(c)]
+    if "year" in [str(c).lower() for c in df.columns] and numeric:
+        year = next(c for c in df.columns if str(c).lower() == "year")
+        return {"kind": "line", "x": year, "y": numeric[0]}
+    if len(text) == 1 and numeric:
+        return {"kind": "bar", "x": text[0], "y": numeric[-1]}
+    return None
+
+
+def build_chart(df):
+    """Altair chart (Valorant red) for a result, or None when a chart wouldn't help."""
+    import altair as alt
+
+    spec = chart_spec(df)
+    if not spec:
+        return None
+    data = df.head(30).copy()
+    data[spec["y"]] = data[spec["y"]].astype(float)
+    label = str(spec["y"]).replace("_", " ")
+    if spec["kind"] == "bar":
+        chart = alt.Chart(data).mark_bar(color="#FF4655").encode(
+            x=alt.X(f"{spec['y']}:Q", title=label), y=alt.Y(f"{spec['x']}:N", sort="-x", title=None))
+    else:
+        chart = alt.Chart(data).mark_line(color="#FF4655", point=True).encode(
+            x=alt.X(f"{spec['x']}:O", title=None), y=alt.Y(f"{spec['y']}:Q", title=label))
+    return chart.properties(height=min(40 * len(data) + 40, 420))

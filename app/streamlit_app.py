@@ -8,12 +8,13 @@ import streamlit as st
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from analyst.clarify import clarify_options  # noqa: E402
 from analyst.db import connect, schema_summary  # noqa: E402
 from analyst.entities import load_entities  # noqa: E402
 from analyst.llm import GeminiLLM, LLMUnavailable  # noqa: E402
 from analyst.pipeline import QUOTA_MESSAGE, Answer, answer  # noqa: E402
 from app.style import CSS  # noqa: E402
-from app.view import badge, hero_stats, pretty_sql  # noqa: E402
+from app.view import badge, build_chart, hero_stats, pretty_sql  # noqa: E402
 
 YEARS = (2021, 2026)
 REPO_URL = "https://github.com/elijahvilla/vct-ai-analyst"
@@ -66,13 +67,24 @@ st.markdown(f"""
 st.markdown('<div class="label">Try one</div>', unsafe_allow_html=True)
 cols = st.columns(2)
 for i, ex in enumerate(EXAMPLES):
-    cols[i % 2].button(ex, key=f"ex{i}", use_container_width=True, on_click=set_question, args=(ex,))
+    cols[i % 2].button(ex, key=f"ex{i}", width="stretch", on_click=set_question, args=(ex,))
 
 st.markdown('<div class="label">Ask your own</div>', unsafe_allow_html=True)
 question = st.text_input("Your question", key="question", label_visibility="collapsed",
                          placeholder="e.g. Which agents had the best win rate on Lotus in 2025?")
 
-if question:
+options = clarify_options(question) if question else None
+if options:
+    st.markdown(f"""
+<div class="card">
+  <span class="verdict info">Did you mean…</span>
+  <div class="a">“Best” can mean different things. Pick one:</div>
+</div>""", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    for col, opt in zip((c1, c2), options):
+        col.button(opt[opt.rfind("(by ") + 4:-1].capitalize(), key=f"clarify-{opt}", width="stretch",
+                   on_click=set_question, args=(opt,))
+elif question:
     with st.spinner("Analyzing…"):
         try:
             a = answer(question, con, model(), ents, schema, dictionary, YEARS)
@@ -87,7 +99,10 @@ if question:
   <div class="a">{body}</div>
 </div>""", unsafe_allow_html=True)
     if a.df is not None:
-        st.dataframe(a.df, hide_index=True, use_container_width=True)
+        chart = build_chart(a.df)
+        if chart is not None:
+            st.altair_chart(chart, width="stretch")
+        st.dataframe(a.df, hide_index=True, width="stretch")
     with st.expander("How this answer was made"):
         if a.sql:
             st.code(pretty_sql(a.sql), language="sql", wrap_lines=True)
