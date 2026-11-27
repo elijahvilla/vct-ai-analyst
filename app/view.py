@@ -14,3 +14,12 @@ def badge(a: Answer) -> tuple[str, str]:
     if a.status == "unavailable":
         return a.message, "error"
     return f"Couldn't answer: {a.message}", "error"
+
+
+def hero_stats(con) -> dict:
+    """Headline numbers for the page banner, read live from the database."""
+    lo, hi, events, maps = con.execute(
+        "SELECT min(year), max(year), count(DISTINCT event_id), count(*) FROM fact_map_result").fetchone()
+    players = con.execute("SELECT count(DISTINCT player_id) FROM fact_player_map").fetchone()[0]
+    seasons = str(lo) if lo == hi else f"{lo}–{hi}"
+    return {"seasons": seasons, "events": events, "maps": maps, "players": players}

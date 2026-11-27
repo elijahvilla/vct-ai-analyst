@@ -49,6 +49,7 @@ Reply with JSON only: {{"sql": "...", "mentioned": {{"agents": [], "maps": [], "
 def build_explain_prompt(question: str, result_markdown: str) -> str:
     return f"""Answer the question in 1-3 short sentences using ONLY the numbers in this result table.
 Do not add numbers that are not in the table. Do not guess beyond it.
+If the question uses a vague word like "best" or "top", say which measure the table uses (e.g. most picks, highest win rate).
 
 Question: {question}
 Result:

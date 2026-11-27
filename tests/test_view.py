@@ -25,3 +25,9 @@ def test_badge_no_data():
 
 def test_badge_unavailable():
     assert badge(Answer("q", status="unavailable", message=QUOTA_MESSAGE)) == (QUOTA_MESSAGE, "error")
+
+
+def test_hero_stats(mini_con):
+    from app.view import hero_stats
+    s = hero_stats(mini_con)
+    assert s == {"seasons": "2024", "events": 2, "maps": 3, "players": 4}
