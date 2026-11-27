@@ -21,7 +21,9 @@ def _q(path: str) -> str:
     return path.replace("\\", "/").replace("'", "''")
 
 
-def build(raw_dir: str = "data/raw", db_path: str = "data/vct.duckdb", sql_dir: str = "etl/sql") -> None:
+def build(raw_dir: str = "data/raw", db_path: str = "data/vct.duckdb", sql_dir: str = "etl/sql",
+          keep_raw: bool = False) -> None:
+    """keep_raw=True leaves the raw_* views in place for exploring; the published DB has none."""
     if os.path.exists(db_path):
         os.remove(db_path)
     con = duckdb.connect(db_path)
@@ -42,9 +44,17 @@ def build(raw_dir: str = "data/raw", db_path: str = "data/vct.duckdb", sql_dir: 
     for sql_file in sorted(glob.glob(os.path.join(sql_dir, "*.sql"))):
         with open(sql_file, encoding="utf-8") as f:
             con.execute(f.read())
+    if not keep_raw:
+        views = [r[0] for r in con.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_type = 'VIEW' AND table_schema = 'main'").fetchall()]
+        for v in sorted(views, key=lambda v: v.count("_"), reverse=False):
+            con.execute(f"DROP VIEW IF EXISTS {v} CASCADE")
+        con.execute("CHECKPOINT")
     con.close()
 
 
 if __name__ == "__main__":
-    build()
+    import sys
+
+    build(keep_raw="--keep-raw" in sys.argv)
     print("built data/vct.duckdb")

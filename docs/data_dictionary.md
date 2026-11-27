@@ -58,7 +58,29 @@ Pro Valorant (VCT) maps from 2021 to 2026. Only the tables below may be queried.
 - `result` TEXT — `win`, `loss` or `draw`
 - `agent_name` TEXT — join to dim_agent
 
+## Ready-made metrics (PREFER these for pick rates, win rates and season totals)
+
+### metric_agent_event_map — one row per event + map + agent
+- `event_id`, `year`, `map_name`, `agent_name`, `role`
+- `team_maps` INTEGER — times a team played the agent on that map (if both teams picked it, it counts 2)
+- `team_maps_won` INTEGER — of those, how many the team won
+- `maps_with_agent` INTEGER — maps where at least one team played the agent (both teams picking it counts 1)
+- `maps_played` INTEGER — maps played on that map at that event
+- `pick_rate_pct`, `win_rate_pct` DOUBLE — for this single row only
+
+### metric_team_event_map — one row per event + map + team
+- `event_id`, `year`, `map_name`, `team_id`, `maps_played`, `maps_won`, `win_rate_pct`
+
+### metric_player_event — one row per event + player + team
+- `event_id`, `year`, `player_id`, `team_id`, `maps_played`, `kills`, `deaths`, `assists`, `first_kills`,
+  `avg_rating`, `avg_acs` (averages over that event's maps)
+
 ## How to compute common stats
-- **Agent pick rate on a map** = maps where a team played the agent ÷ (2 × maps played on that map), from `fact_team_comp`.
-- **Agent win rate** = rows with `result = 'win'` ÷ all rows for that agent, from `fact_team_comp`.
-- **Map count** = `count(DISTINCT match_map_id)` — never count player rows as maps.
+- **Combining rows: never average the `_pct` columns.** Sum the counts, then divide:
+  - agent pick rate = `100 * sum(team_maps) / (2 * sum(maps_played))`
+  - agent win rate  = `100 * sum(team_maps_won) / sum(team_maps)`
+  - team win rate   = `100 * sum(maps_won) / sum(maps_played)`
+  - player average rating over several events = weight by maps: `sum(avg_rating * maps_played) / sum(maps_played)`
+- **"How many maps was X picked on"** = `sum(maps_with_agent)`; "how many times was X picked" = `sum(team_maps)`.
+- **Map count** = `count(DISTINCT match_map_id)` in fact tables — never count player rows as maps.
+- Filter events with `dim_event` (name, year, is_international) and join on `event_id`.

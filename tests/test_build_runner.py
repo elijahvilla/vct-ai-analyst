@@ -18,7 +18,7 @@ def test_build_stacks_years_and_runs_sql(tmp_path):
     _write(sql_dir / "01_x.sql", "CREATE OR REPLACE TABLE kills_by_year AS SELECT year, sum(Kills) AS k FROM raw_overview GROUP BY year;")
     db = tmp_path / "t.duckdb"
 
-    build(raw_dir=str(raw), db_path=str(db), sql_dir=str(sql_dir))
+    build(raw_dir=str(raw), db_path=str(db), sql_dir=str(sql_dir), keep_raw=True)
 
     con = duckdb.connect(str(db), read_only=True)
     assert con.execute("SELECT count(*) FROM raw_overview").fetchone()[0] == 3
@@ -34,6 +34,18 @@ def test_build_handles_quoted_comma_deep_in_file(tmp_path):
     _write(raw / "vct_2021" / "agents" / "teams_picked_agents.csv",
            "Team,Agent,Wins\n" + rows + '"Stay Small, Stay Second",raze,0\n')
     db = tmp_path / "t.duckdb"
-    build(raw_dir=str(raw), db_path=str(db), sql_dir=str(tmp_path / "nosql"))
+    build(raw_dir=str(raw), db_path=str(db), sql_dir=str(tmp_path / "nosql"), keep_raw=True)
     con = duckdb.connect(str(db), read_only=True)
     assert con.execute("SELECT Agent FROM raw_teams_picked_agents WHERE Team = 'Stay Small, Stay Second'").fetchone() == ("raze",)
+
+
+def test_build_drops_raw_views_by_default(tmp_path):
+    raw = tmp_path / "raw"
+    _write(raw / "vct_2024" / "matches" / "overview.csv", "Player,Kills\nAspas,25\n")
+    sql_dir = tmp_path / "sql"
+    _write(sql_dir / "01.sql", "CREATE OR REPLACE TABLE k AS SELECT sum(Kills) AS kills FROM raw_overview;")
+    db = tmp_path / "t.duckdb"
+    build(raw_dir=str(raw), db_path=str(db), sql_dir=str(sql_dir))
+    con = duckdb.connect(str(db), read_only=True)
+    assert con.execute("SELECT kills FROM k").fetchone()[0] == 25
+    assert con.execute("SELECT count(*) FROM information_schema.tables WHERE table_type = 'VIEW'").fetchone()[0] == 0
