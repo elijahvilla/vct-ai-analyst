@@ -3,7 +3,7 @@
 **Ask about pro Valorant in plain English. An AI writes the SQL, and six checks catch its mistakes before you see the answer.**
 
 [![tests](https://github.com/elijahvilla/vct-ai-analyst/actions/workflows/tests.yml/badge.svg)](https://github.com/elijahvilla/vct-ai-analyst/actions/workflows/tests.yml)
-**Live app:** link coming shortly
+**Live app:** [vct-ai-analyst.streamlit.app](https://vct-ai-analyst.streamlit.app)
 
 ![Demo: asking about Champions 2024 pick rates, a vague question getting clarified, and a fake player getting blocked](docs/media/demo.gif)
 
@@ -74,7 +74,7 @@ The raw data had traps that would silently corrupt answers, all documented in [`
 
 The model reads [`docs/data_dictionary.md`](docs/data_dictionary.md) before writing SQL.
 
-**Stack:** Python 3.12 · DuckDB · sqlglot · Google Gemini (free tier) · Streamlit · pytest (119 tests, run on every push)
+**Stack:** Python 3.12 · DuckDB · sqlglot · Google Gemini (free tier) · Streamlit · pytest (120 tests, run on every push)
 
 ## Run it locally
 
