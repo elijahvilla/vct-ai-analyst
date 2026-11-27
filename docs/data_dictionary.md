@@ -3,6 +3,21 @@
 Pro Valorant (VCT) maps from 2021 to 2026. Only the tables below may be queried. Names of agents are lowercase
 (`jett`, `kayo` for KAY/O). Percentages are on a 0–100 scale. Every map appears once per player in `fact_player_map`.
 
+## What's in the data (use these exact names)
+
+- **Seasons:** 2021–2026. Every Valorant Champions from 2021 to 2025 is included; 2026 runs through Masters Santiago and Masters London plus each league's Kickoff and Stage 1.
+- **Agents (lowercase):** astra (controller), brimstone (controller), clove (controller), harbor (controller), miks (controller), omen (controller), viper (controller), iso (duelist), jett (duelist), neon (duelist), phoenix (duelist), raze (duelist), reyna (duelist), waylay (duelist), yoru (duelist), breach (initiator), fade (initiator), gekko (initiator), kayo (initiator), skye (initiator), sova (initiator), tejo (initiator), chamber (sentinel), cypher (sentinel), deadlock (sentinel), killjoy (sentinel), sage (sentinel), veto (sentinel), vyse (sentinel).
+- **Maps:** Abyss, Ascent, Bind, Breeze, Corrode, Fracture, Haven, Icebox, Lotus, Pearl, Split, Summit, Sunset.
+- **Event names** follow vlr.gg. People often shorten them ("Masters Madrid 2024" = `Champions Tour 2024: Masters Madrid`), so match events by keywords, e.g.
+  `event_name ILIKE '%masters%' AND event_name ILIKE '%madrid%' AND year = 2024` — never ILIKE the user's whole phrase.
+- **International (top-tier) events by year:**
+- **2021:** `Valorant Champions 2021`; `Valorant Champions Tour Stage 2: Masters Reykjavík`; `Valorant Champions Tour Stage 3: Masters Berlin`
+- **2022:** `Valorant Champions 2022`; `Valorant Champions Tour Stage 1: Masters Reykjavík`; `Valorant Champions Tour Stage 2: Masters Copenhagen`
+- **2023:** `Champions Tour 2023: Americas Last Chance Qualifier`; `Champions Tour 2023: Americas League`; `Champions Tour 2023: Champions China Qualifier`; `Champions Tour 2023: EMEA Last Chance Qualifier`; `Champions Tour 2023: EMEA League`; `Champions Tour 2023: Lock-In Sao Paulo`; `Champions Tour 2023: Masters Tokyo`; `Champions Tour 2023: Pacific Last Chance Qualifier`; `Champions Tour 2023: Pacific League`; `Valorant Champions 2023`
+- **2024:** `Champions Tour 2024: Americas Kickoff`; `Champions Tour 2024: Americas Stage 1`; `Champions Tour 2024: Americas Stage 2`; `Champions Tour 2024: China Kickoff`; `Champions Tour 2024: China Stage 1`; `Champions Tour 2024: China Stage 2`; `Champions Tour 2024: EMEA Kickoff`; `Champions Tour 2024: EMEA Stage 1`; `Champions Tour 2024: EMEA Stage 2`; `Champions Tour 2024: Masters Madrid`; `Champions Tour 2024: Masters Shanghai`; `Champions Tour 2024: Pacific Kickoff`; `Champions Tour 2024: Pacific Stage 1`; `Champions Tour 2024: Pacific Stage 2`; `Valorant Champions 2024`
+- **2025:** `VCT 2025: Americas Kickoff`; `VCT 2025: Americas Stage 1`; `VCT 2025: Americas Stage 2`; `VCT 2025: China Kickoff`; `VCT 2025: China Stage 1`; `VCT 2025: China Stage 2`; `VCT 2025: EMEA Kickoff`; `VCT 2025: EMEA Stage 1`; `VCT 2025: EMEA Stage 2`; `VCT 2025: Pacific Kickoff`; `VCT 2025: Pacific Stage 1`; `VCT 2025: Pacific Stage 2`; `Valorant Champions 2025`; `Valorant Masters Bangkok 2025`; `Valorant Masters Toronto 2025`
+- **2026:** `VCT 2026: Americas Kickoff`; `VCT 2026: Americas Stage 1`; `VCT 2026: China Kickoff`; `VCT 2026: China Stage 1`; `VCT 2026: EMEA Kickoff`; `VCT 2026: EMEA Stage 1`; `VCT 2026: Pacific Kickoff`; `VCT 2026: Pacific Stage 1`; `Valorant Masters London 2026`; `Valorant Masters Santiago 2026`
+
 ## dim_event — tournaments
 - `event_id` INTEGER — tournament ID (from vlr.gg)
 - `event_name` TEXT — e.g. `Valorant Champions 2024`, `Champions Tour 2024: Masters Madrid`, `VCT 2025: EMEA Stage 1`
