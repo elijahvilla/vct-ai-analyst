@@ -92,3 +92,10 @@ def test_record_is_json_safe(run):
 def test_unanswerable_refused_without_running(run):
     a, llm = run(['{"sql": "", "unanswerable": "the data has no viewer counts"}'])
     assert a.status == "refused" and "viewer counts" in a.message and len(llm.prompts) == 1
+
+
+def test_quota_during_explanation_still_returns_checked_table(run):
+    # live-app finding: SQL worked, only the explanation call hit the free quota
+    a, _ = run([draft(JETT_SQL, agents=["Jett"]), LLMUnavailable("429")])
+    assert a.status == "ok" and a.df is not None and a.explanation is None
+    assert "explanation" in a.message.lower()

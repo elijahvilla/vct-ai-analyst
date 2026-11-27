@@ -97,14 +97,21 @@ def answer(question: str, con: duckdb.DuckDBPyConnection, llm: LLM, ents: Entiti
             return a
         a.df = df
 
-        a.explanation = llm.complete(build_explain_prompt(question, df.head(50).to_csv(index=False)))
-        flags = [check_sanity(df, year_range), check_explanation(a.explanation, df, year_range, question)]
+        try:
+            a.explanation = llm.complete(build_explain_prompt(question, df.head(50).to_csv(index=False)))
+        except LLMUnavailable:  # the table is already checked; only the summary sentence is missing
+            a.explanation = None
+        flags = [check_sanity(df, year_range)]
+        if a.explanation is not None:
+            flags.append(check_explanation(a.explanation, df, year_range, question))
         a.checks.extend(flags)
         failed = [f for f in flags if not f.passed]
         if failed:
             a.status, a.message = "flagged", "; ".join(f"{f.name}: {f.reason}" for f in failed)
         else:
             a.status = "ok"
+        if a.explanation is None:
+            a.message = (a.message + "; " if a.message else "") + "explanation unavailable (free AI quota), table is checked"
         return a
     except LLMUnavailable:
         a.status, a.message = "unavailable", QUOTA_MESSAGE
