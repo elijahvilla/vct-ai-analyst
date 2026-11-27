@@ -23,3 +23,13 @@ def hero_stats(con) -> dict:
     players = con.execute("SELECT count(DISTINCT player_id) FROM fact_player_map").fetchone()[0]
     seasons = str(lo) if lo == hi else f"{lo}–{hi}"
     return {"seasons": seasons, "events": events, "maps": maps, "players": players}
+
+
+def pretty_sql(sql: str) -> str:
+    """Multi-line, indented SQL for display; unchanged if it can't be parsed."""
+    import sqlglot
+
+    try:
+        return sqlglot.transpile(sql, read="duckdb", write="duckdb", pretty=True)[0]
+    except Exception:
+        return sql

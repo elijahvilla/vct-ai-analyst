@@ -13,7 +13,7 @@ from analyst.entities import load_entities  # noqa: E402
 from analyst.llm import GeminiLLM, LLMUnavailable  # noqa: E402
 from analyst.pipeline import QUOTA_MESSAGE, Answer, answer  # noqa: E402
 from app.style import CSS  # noqa: E402
-from app.view import badge, hero_stats  # noqa: E402
+from app.view import badge, hero_stats, pretty_sql  # noqa: E402
 
 YEARS = (2021, 2026)
 REPO_URL = "https://github.com/elijahvilla/vct-ai-analyst"
@@ -73,7 +73,7 @@ question = st.text_input("Your question", key="question", label_visibility="coll
                          placeholder="e.g. Which agents had the best win rate on Lotus in 2025?")
 
 if question:
-    with st.spinner("Analyzing the VOD… (10–20 seconds on the free AI tier)"):
+    with st.spinner("Analyzing…"):
         try:
             a = answer(question, con, model(), ents, schema, dictionary, YEARS)
         except LLMUnavailable:
@@ -90,7 +90,7 @@ if question:
         st.dataframe(a.df, hide_index=True, use_container_width=True)
     with st.expander("How this answer was made"):
         if a.sql:
-            st.code(a.sql, language="sql")
+            st.code(pretty_sql(a.sql), language="sql", wrap_lines=True)
         rows = []
         for c in a.checks:
             dot = "ok" if c.passed else ("block" if c.blocking else "flag")
@@ -102,6 +102,5 @@ if question:
 st.markdown(f"""
 <div class="foot">
 Data: Kaggle “Valorant Champion Tour 2021–2026 Data” by Ryan Luong (MIT license), originally from vlr.gg.
-Code and accuracy report on <a href="{REPO_URL}">GitHub</a>. Built with AI assistance.
-Fan project, not affiliated with or endorsed by Riot Games.
+Code and accuracy report on <a href="{REPO_URL}">GitHub</a>.
 </div>""", unsafe_allow_html=True)

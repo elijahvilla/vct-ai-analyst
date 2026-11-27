@@ -31,3 +31,14 @@ def test_hero_stats(mini_con):
     from app.view import hero_stats
     s = hero_stats(mini_con)
     assert s == {"seasons": "2024", "events": 2, "maps": 3, "players": 4}
+
+
+def test_pretty_sql_formats_one_line_query():
+    from app.view import pretty_sql
+    out = pretty_sql("SELECT agent_name, count(*) AS picks FROM fact_team_comp WHERE year = 2024 GROUP BY 1 LIMIT 1000")
+    assert out.count("\n") >= 3 and "FROM fact_team_comp" in out
+
+
+def test_pretty_sql_falls_back_on_unparseable():
+    from app.view import pretty_sql
+    assert pretty_sql("not sql at all ((") == "not sql at all (("
