@@ -9,3 +9,4 @@ data/tableau/
 *.duckdb.wal
 .streamlit/secrets.toml
 .env
+!data/vct.duckdb
