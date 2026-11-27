@@ -10,6 +10,7 @@ ENTITY_KINDS = ("agents", "maps", "teams", "players", "events")
 class SqlDraft:
     sql: str
     mentioned: dict[str, list[str]] = field(default_factory=dict)
+    unanswerable: str = ""
 
 
 def build_sql_prompt(question: str, data_dictionary: str) -> str:
@@ -23,7 +24,8 @@ Rules:
 - Agent names are lowercase in the data ('jett', 'kayo' for KAY/O). Match names case-insensitively.
 - Count maps with count(DISTINCT match_map_id); never count player rows as maps.
 - Give rates as percentages 0-100 rounded to 1 decimal, with clear column names.
-- If the question can't be answered from these tables, still return your best SELECT; checks will catch it.
+- If these tables cannot answer the question (for example viewers, prize money, salaries or anything not listed),
+  do not answer a different question. Reply {{"sql": "", "unanswerable": "<short reason>"}} instead.
 
 Also list every agent, map, team, player and event NAME the question refers to, exactly as written in the question.
 
@@ -68,7 +70,12 @@ def parse_sql_response(text: str) -> SqlDraft | None:
         data = json.loads(candidate)
     except json.JSONDecodeError:
         return None
-    sql = (data.get("sql") or "").strip() if isinstance(data, dict) else ""
+    if not isinstance(data, dict):
+        return None
+    sql = (data.get("sql") or "").strip()
+    reason = str(data.get("unanswerable") or "").strip()
+    if not sql and reason:
+        return SqlDraft(sql="", mentioned={k: [] for k in ENTITY_KINDS}, unanswerable=reason)
     if not sql:
         return None
     raw = data.get("mentioned") or {}

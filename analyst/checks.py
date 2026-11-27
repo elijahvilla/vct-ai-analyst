@@ -79,8 +79,14 @@ def _known(kind: str, name: str, ents: Entities) -> bool:
     pool = getattr(ents, kind)
     if n in pool:
         return True
-    # People shorten event names ("Champions 2024" for "Valorant Champions 2024").
-    return kind == "events" and len(n) >= 6 and any(n in e for e in pool)
+    if kind != "events":
+        return False
+    # People shorten and reorder event names: "Champions 2024" for "Valorant Champions 2024",
+    # "Masters Madrid 2024" for "Champions Tour 2024: Masters Madrid". Every word must appear.
+    words = [w for w in re.findall(r"[a-z0-9]+", str(name).lower()) if len(w) >= 2]
+    if len(n) >= 6 and any(n in e for e in pool):
+        return True
+    return bool(words) and any(all(w in e for w in words) for e in pool)
 
 
 def check_grounding(sql: str, mentioned: dict[str, list[str]], schema: dict[str, list[str]], ents: Entities) -> CheckResult:

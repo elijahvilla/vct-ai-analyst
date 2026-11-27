@@ -40,6 +40,9 @@ def answer(question: str, con: duckdb.DuckDBPyConnection, llm: LLM, ents: Entiti
         if draft is None:
             a.message = "parse: the AI did not return a query"
             return a
+        if draft.unanswerable:
+            a.message = f"unanswerable: {draft.unanswerable}"
+            return a
         a.sql = draft.sql
 
         if not checks_enabled:  # baseline for the eval: raw AI SQL, no checks, no retry

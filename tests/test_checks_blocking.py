@@ -140,3 +140,18 @@ def test_grounding_falls_back_to_entities_only(monkeypatch, ctx):
     _sqlglot_cannot_parse(monkeypatch)
     assert check_grounding("SELECT agent_name FROM dim_agent", {"agents": ["jett"]}, schema, ents).passed
     assert not check_grounding("SELECT agent_name FROM dim_agent", {"agents": ["Phoenixx"]}, schema, ents).passed
+
+
+def test_grounding_event_words_in_any_order(ctx):
+    # regression: "Masters Madrid 2024" vs "Champions Tour 2024: Masters Madrid" was blocked
+    schema, ents = ctx
+    ents.events.add("championstour2024:mastersmadrid".replace(":", ""))
+    from analyst.entities import normalize  # noqa: F401
+    res = check_grounding("SELECT 1", {"events": ["Masters Madrid 2024"]}, schema, ents)
+    assert res.passed, res.reason
+
+
+def test_grounding_event_words_must_all_match(ctx):
+    schema, ents = ctx
+    res = check_grounding("SELECT 1", {"events": ["Masters Tokyo 2024"]}, schema, ents)
+    assert not res.passed

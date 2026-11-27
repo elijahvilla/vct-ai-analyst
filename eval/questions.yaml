@@ -1,6 +1,7 @@
 # Test set: questions with hand-written correct SQL ("gold"). gold_sql: null means the right
 # behavior is to refuse or say "no data" (the question can't be answered from this data).
 # Categories: simple, filter, aggregate, join, tricky, impossible.
+# Gold results contain only the columns the question asks for (extra answer columns are ignored).
 
 # ---------- simple
 - id: s1
@@ -52,7 +53,7 @@
   category: filter
   question: Which players had more than 400 kills on Jett in 2025?
   gold_sql: |
-    SELECT p.player_name, sum(f.kills) AS kills FROM fact_player_map f
+    SELECT p.player_name FROM fact_player_map f
     JOIN fact_map_result m USING (match_map_id) JOIN dim_player p USING (player_id)
     WHERE m.year = 2025 AND f.agent_name = 'jett' GROUP BY 1 HAVING sum(f.kills) > 400
 - id: f2
@@ -162,7 +163,7 @@
   category: join
   question: Which players played at least 50 maps for Paper Rex in 2025?
   gold_sql: |
-    SELECT p.player_name, count(*) AS maps FROM fact_player_map f JOIN fact_map_result m USING (match_map_id)
+    SELECT p.player_name FROM fact_player_map f JOIN fact_map_result m USING (match_map_id)
     JOIN dim_player p USING (player_id) JOIN dim_team t ON t.team_id = f.team_id
     WHERE m.year = 2025 AND t.team_name = 'Paper Rex' GROUP BY 1 HAVING count(*) >= 50
 - id: j3

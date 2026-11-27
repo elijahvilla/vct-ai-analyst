@@ -87,3 +87,8 @@ def test_record_is_json_safe(run):
     rec = answer_to_record(a)
     json.dumps(rec)
     assert rec["status"] == "ok" and rec["rows"][0]["picks"] == 3
+
+
+def test_unanswerable_refused_without_running(run):
+    a, llm = run(['{"sql": "", "unanswerable": "the data has no viewer counts"}'])
+    assert a.status == "refused" and "viewer counts" in a.message and len(llm.prompts) == 1

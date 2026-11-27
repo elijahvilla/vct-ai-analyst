@@ -69,3 +69,8 @@ def test_read_secret_prefers_environment(tmp_path, monkeypatch):
 
 def test_explain_prompt_asks_to_name_the_measure():
     assert "which measure" in build_explain_prompt("best map for Chamber?", "map,picks\nIcebox,1405")
+
+
+def test_parse_unanswerable():
+    d = parse_sql_response('{"sql": "", "unanswerable": "the data has no viewer counts"}')
+    assert d is not None and d.sql == "" and d.unanswerable == "the data has no viewer counts"
